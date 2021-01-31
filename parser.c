@@ -1,9 +1,11 @@
 #include "lexer.h"
 #include "memory.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 #define TYPE_CONS 1
 #define TYPE_SYMBOL 2
+#define TYPE_NUMBER 3
 
 struct cons_s {
   struct memcell_s cell;
@@ -38,11 +40,10 @@ struct cons_s *cons(void* car, void *cdr) {
   return ret;
 }
 struct number_s *number(char *data) {
-  struct number_s *ret = memcell_alloc(T_NUMBER, sizeof(*ret));
+  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret));
   ret->number = strtol(data, NULL, 10);
   return ret;
 }
-
 
 void push(struct memcell_s *v) {
   struct stack_s *n = malloc(sizeof(*n));
@@ -69,22 +70,17 @@ struct memcell_s *parser(int in_fd)
   char token_value[1024];
   do {
     int token = read_token(in_fd, token_value, sizeof(token_value));
-    if (open_brackets) {
-      pos = (void*)&(*pos)->cdr;
-    }
     switch (token) {
       case T_SPECIAL:
         switch (*token_value) {
           case '(':
-            push((void*)pos);
+            *pos = cons(NULL, NULL);
+            push((void*)&(*pos)->cdr);
             pos = (void*)&(*pos)->car;
-            ++ open_brackets;
+            *pos = NULL;
             break;
           case ')':
-            if (stack) {
-              pos = (void*)pop();
-            }
-            -- open_brackets;
+            pos = (void*)pop();
             break;
           case '\'':
             break;
@@ -94,17 +90,53 @@ struct memcell_s *parser(int in_fd)
         break;
       case T_NUMBER:
         *pos = (void*)cons((void*)number(token_value), NULL);
+        pos = (void*)&(*pos)->cdr;
         break;
       case T_STRING:
         break;
       case T_SYMBOL:
         break;
     }
-  } while (open_brackets);
+  } while (stack);
+  if (ret) {
+    memcell_free(ret);
+    return ret->car;
+  }
+  return NULL;
+}
+
+void print_cons(struct memcell_s *cell) {
+  struct cons_s *c;
+  struct number_s *number;
+  int in_list = 0;
+  if (!cell) {
+    printf("()");
+    return;
+  }
+  switch(cell->type) {
+    case TYPE_CONS:
+      while (cell) {
+        c = (void*)cell;
+        if (in_list == 0) {
+          printf("(");
+          in_list = 1;
+        }
+        print_cons(c->car);
+        cell = c->cdr;
+        if (!cell) {
+          printf(")");
+        }
+     }
+     break;
+   case TYPE_NUMBER:
+     number = (void*)cell;
+     printf("%li ", number->number);
+     break;
+  }
 }
 
 int main()
 {
   memcell_init(1024);
-  parser(0);
+  print_cons(parser(0));
 }
