@@ -139,4 +139,5 @@ int main()
 {
   memcell_init(1024);
   print_cons(parser(0));
+  memcell_cleanup();
 }
