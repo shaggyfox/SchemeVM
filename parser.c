@@ -7,26 +7,6 @@
 #include <search.h>
 #include "globals.h"
 
-struct cons_s {
-  struct memcell_s cell;
-  struct memcell_s *car;
-  struct memcell_s *cdr;
-};
-
-struct number_s {
-  struct memcell_s cell;
-  int64_t number;
-};
-
-struct string_s {
-  struct memcell_s cell;
-  char string[];
-};
-
-struct symbol_s {
-  struct memcell_s cell;
-  char symbol[];
-};
 
 struct stack_s {
   struct stack_s *next;
