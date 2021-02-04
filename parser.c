@@ -33,12 +33,13 @@ struct stack_s {
   struct memcell_s *v;
 } *stack = NULL;
 
-struct cons_s *cons(void* car, void *cdr) {
+struct cons_s *CONS(void* car, void *cdr) {
   struct cons_s *ret = memcell_alloc(TYPE_CONS, sizeof(*ret), dynamic_pool);
   ret->car = car;
   ret->cdr = cdr;
   return ret;
 }
+
 struct number_s *number(char *data) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
   ret->number = strtol(data, NULL, 10);
@@ -50,6 +51,14 @@ static int sym_cmp(const void *a, const void *b) {
   const struct symbol_s *sym_a = a;
   const struct symbol_s *sym_b = b;
   return strcmp(sym_a->symbol, sym_b->symbol);
+}
+
+void cleanup_symbols(void) {
+  while (symbol_tree) {
+    void *to_del = *(void**)symbol_tree;
+    tdelete(to_del, &symbol_tree, sym_cmp);
+    memcell_free(to_del);
+  }
 }
 
 struct symbol_s *symbol(char *data) {
@@ -91,7 +100,7 @@ struct memcell_s *parser(int in_fd)
       case T_SPECIAL:
         switch (*token_value) {
           case '(':
-            *pos = cons(NULL, NULL);
+            *pos = CONS(NULL, NULL);
             push((void*)&(*pos)->cdr);
             pos = (void*)&(*pos)->car;
             *pos = NULL;
@@ -106,13 +115,13 @@ struct memcell_s *parser(int in_fd)
         }
         break;
       case T_NUMBER:
-        *pos = (void*)cons((void*)number(token_value), NULL);
+        *pos = (void*)CONS((void*)number(token_value), NULL);
         pos = (void*)&(*pos)->cdr;
         break;
       case T_STRING:
         break;
       case T_SYMBOL:
-        *pos = (void*)cons((void*)symbol(token_value), NULL);
+        *pos = (void*)CONS((void*)symbol(token_value), NULL);
         pos = (void*)&(*pos)->cdr;
         break;
     }

@@ -26,5 +26,6 @@ int main()
   struct memcell_s *line = parser(0);
   //memcell_print(eval(line));
   memcell_print(line);
+  cleanup_symbols();
   cleanup_globals();
 }
