@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "parser.h"
+#include <string.h>
+#include <search.h>
+#include "globals.h"
 
 struct cons_s {
   struct memcell_s cell;
@@ -31,14 +34,32 @@ struct stack_s {
 } *stack = NULL;
 
 struct cons_s *cons(void* car, void *cdr) {
-  struct cons_s *ret = memcell_alloc(TYPE_CONS, sizeof(*ret));
+  struct cons_s *ret = memcell_alloc(TYPE_CONS, sizeof(*ret), dynamic_pool);
   ret->car = car;
   ret->cdr = cdr;
   return ret;
 }
 struct number_s *number(char *data) {
-  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret));
+  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
   ret->number = strtol(data, NULL, 10);
+  return ret;
+}
+
+void *symbol_tree = NULL;
+static int sym_cmp(const void *a, const void *b) {
+  const struct symbol_s *sym_a = a;
+  const struct symbol_s *sym_b = b;
+  return strcmp(sym_a->symbol, sym_b->symbol);
+}
+
+struct symbol_s *symbol(char *data) {
+  struct symbol_s *ret = NULL;
+  struct symbol_s *new_sym = memcell_alloc(TYPE_SYMBOL, sizeof(*new_sym) + strlen(data) + 1, static_pool);
+  memcpy(new_sym->symbol, data, strlen(data) + 1);
+  ret = *(void**)tsearch(new_sym, &symbol_tree, sym_cmp);
+  if (ret != new_sym) {
+    memcell_free(new_sym);
+  }
   return ret;
 }
 
@@ -61,7 +82,6 @@ struct memcell_s *pop(void) {
 
 struct memcell_s *parser(int in_fd)
 {
-  int open_brackets = 0;
   struct cons_s *ret = NULL;
   struct cons_s **pos = &ret;
   char token_value[1024];
@@ -92,6 +112,8 @@ struct memcell_s *parser(int in_fd)
       case T_STRING:
         break;
       case T_SYMBOL:
+        *pos = (void*)cons((void*)symbol(token_value), NULL);
+        pos = (void*)&(*pos)->cdr;
         break;
     }
   } while (stack);
@@ -105,6 +127,7 @@ struct memcell_s *parser(int in_fd)
 void memcell_print(struct memcell_s *cell) {
   struct cons_s *c;
   struct number_s *number;
+  struct symbol_s *symbol;
   int in_list = 0;
   if (!cell) {
     printf("()");
@@ -128,6 +151,10 @@ void memcell_print(struct memcell_s *cell) {
    case TYPE_NUMBER:
      number = (void*)cell;
      printf("%li ", number->number);
+     break;
+   case TYPE_SYMBOL:
+     symbol = (void*)cell;
+     printf("%s ", symbol->symbol);
      break;
   }
 }

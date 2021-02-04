@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "lexer.h"
+#include "globals.h"
 enum {
   INIT,
   IN_SYMBOL,

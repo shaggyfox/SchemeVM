@@ -1,5 +1,6 @@
 #include "memory.h"
 #include "parser.h"
+#include "globals.h"
 #include <string.h>
 
 
@@ -21,8 +22,9 @@ struct memcell_s *eval(struct memcell_s *in){
 
 int main()
 {
-  memcell_init(1024);
+  init_globals();
   struct memcell_s *line = parser(0);
-  memcell_print(eval(line));
-  memcell_cleanup();
+  //memcell_print(eval(line));
+  memcell_print(line);
+  cleanup_globals();
 }

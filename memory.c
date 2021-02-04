@@ -5,42 +5,39 @@
 #define ALIGN_TO(len, type) \
     (len % sizeof(type) ? len + sizeof(type) - len % sizeof(type) : len)
 
-static struct memcell_s *glob_memory = NULL;
-static struct memcell_s *glob_memory_last = NULL;
-static uint32_t glob_memory_size = 0;
-
-void memcell_init(uint32_t size)
+struct memcell_pool_s *memcell_init(uint32_t size)
 {
+  struct memcell_pool_s *ret = malloc(sizeof(*ret));
   size = ALIGN_TO(size, sizeof(struct memcell_s));
-  glob_memory=calloc(1, size);
-  glob_memory[0].next = size / sizeof(struct memcell_s) - 1;
-  glob_memory[glob_memory[0].next].in_use = 255; /* end of memory */
-  glob_memory_last = glob_memory;
+  ret->pool=calloc(1, size);
+  ret->pool[0].next = size / sizeof(struct memcell_s) - 1;
+  ret->pool[ret->pool[0].next].in_use = 255; /* end of memory */
+  ret->last = ret->pool;
+  return ret;
 }
 
-void memcell_cleanup(void)
+void memcell_cleanup(struct memcell_pool_s *pool)
 {
-  free(glob_memory);
-  glob_memory = NULL;
-  glob_memory_last = NULL;
+  free(pool->pool);
+  free(pool);
 }
 
-void *memcell_alloc(int type, uint32_t len)
+void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
 {
   uint8_t next = ALIGN_TO(len, sizeof(struct memcell_s)) / sizeof(struct memcell_s);
   struct memcell_s *ret = NULL;
 
   for (int cnt = 0; cnt < 2; ++cnt) {
-    if (glob_memory_last->in_use == 255) {
+    if (pool->last->in_use == 255) {
       /* rewind */
-      glob_memory_last = glob_memory;
+      pool->last = pool->pool;
       continue;
     }
-    if (!glob_memory_last->in_use && glob_memory_last->next >= next) {
-      ret = glob_memory_last;
+    if (!pool->last->in_use && pool->last->next >= next) {
+      ret = pool->last;
       break;
     }
-    glob_memory_last += glob_memory_last->next;
+    pool->last += pool->last->next;
   }
 
   if (ret) {

@@ -11,9 +11,14 @@ struct memcell_s {
   char data[];       /* cells data */
 };
 
-void memcell_init(uint32_t size);
-void memcell_cleanup(void);
-void *memcell_alloc(int type, uint32_t len);
+struct memcell_pool_s {
+  struct memcell_s *pool;
+  struct memcell_s *last;
+};
+
+struct memcell_pool_s *memcell_init(uint32_t size);
+void memcell_cleanup(struct memcell_pool_s* pool);
+void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool);
 void memcell_free(void *in);
 void memcell_unfree(void *in);
 #endif
