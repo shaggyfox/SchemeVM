@@ -2,10 +2,7 @@
 #include "memory.h"
 #include <stdlib.h>
 #include <stdio.h>
-
-#define TYPE_CONS 1
-#define TYPE_SYMBOL 2
-#define TYPE_NUMBER 3
+#include "parser.h"
 
 struct cons_s {
   struct memcell_s cell;
@@ -105,7 +102,7 @@ struct memcell_s *parser(int in_fd)
   return NULL;
 }
 
-void print_cons(struct memcell_s *cell) {
+void memcell_print(struct memcell_s *cell) {
   struct cons_s *c;
   struct number_s *number;
   int in_list = 0;
@@ -121,7 +118,7 @@ void print_cons(struct memcell_s *cell) {
           printf("(");
           in_list = 1;
         }
-        print_cons(c->car);
+        memcell_print(c->car);
         cell = c->cdr;
         if (!cell) {
           printf(")");
@@ -135,9 +132,11 @@ void print_cons(struct memcell_s *cell) {
   }
 }
 
+/*
 int main()
 {
   memcell_init(1024);
   print_cons(parser(0));
   memcell_cleanup();
 }
+*/
