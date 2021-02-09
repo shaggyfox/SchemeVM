@@ -4,6 +4,7 @@
 #define TYPE_NUMBER 3
 #define TYPE_BUILDIN 4
 
+struct number_s *number(int nr);
 struct cons_s {
   struct memcell_s cell;
   struct memcell_s *car;

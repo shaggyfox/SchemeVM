@@ -20,34 +20,63 @@ void *DEFINE(void *sym, void *value)
 #define CMD_PLUS  30
 #define CMD_MINUS 40
 
-#define PUSH \
-  stack = CONS(CONS(args,CONS(value, NULL)),stack)
-#define POP \
-  args = CAR(CAR(stack)); \
-  value =CAR(CDR(CAR(stack)));
-//struct cons_s *vm_stack = NULL;
-struct memcell_s *eval(struct memcell_s *input){
-  struct cons_s *stack = NULL;
-  int c = CMD_RESOLV;
-  void *ret = NULL;
-  struct memcell_s *args = input; /* put on stack later */
-  struct memcell_s *value = NULL; /* put on stack later */
-  do {
-    switch(c) {
-      case CMD_RESOLV:
-        if(MEMCELL_TYPE(args) == TYPE_NUMBER
-           /*|| MEMCELL_TYPE(args) == TYPE_STRING*/) {
-          /* numbers resolve to them selfes */
-          ret = args;
-        } else if(MEMCELL_TYPE(args) == TYPE_CONS) {
-          /* cons are executed ... */
-        }
-        break;
-      case CMD_APPLY:
+#define NEW_STATE(fn, args, value, next) \
+  CONS(CONS(number(fn), CONS(args, CONS(value, NULL))), next)
 
+#define JUMP(fn) \
+  GET_NUMBER(CAR(CAR(vm_state))) = fn;
+
+#define ARGS() \
+  CAR(CDR(CAR(vm_state)))
+
+#define VAL() \
+  CAR(CDR(CDR(CAR(vm_state))))
+
+#define CALL(return_fn, call_fn, args) \
+  GET_NUMBER(CAR(CAR(vm_state))) = return_fn; \
+  vm_state = NEW_STATE(call_fn, args, NULL, vm_state);
+
+#define GET_NUMBER(v) ((struct number_s*)v)->number
+#define RET() vm_state = (void*)CDR(vm_state);
+
+struct cons_s *vm_state = NULL;
+struct memcell_s *eval(struct memcell_s *input){
+  void *ret = NULL;
+  int i = 0;
+  vm_state = NEW_STATE(CMD_PLUS, input, NULL, NULL);
+  while(vm_state) {
+    switch (GET_NUMBER(CAR(CAR(vm_state)))) {
+      case CMD_RESOLV:
+        if (ARGS() && ARGS()->type == TYPE_NUMBER) {
+          ret = ARGS();
+        } else {
+          ret = number(0);
+        }
+        RET();
+        break;
+      case CMD_RESOLV + 1:
+        break;
+      case CMD_PLUS:
+        VAL() = number(0);
+      case CMD_PLUS + 1:
+        if (ARGS()) {
+          if (CAR(ARGS()) && CAR(ARGS())->type != TYPE_NUMBER) {
+          CALL(CMD_PLUS + 2, CMD_RESOLV, CAR(ARGS()));
+          break;
+          }else {
+            ret = CAR(ARGS());
+          }
+          case CMD_PLUS + 2:
+          GET_NUMBER(VAL()) += GET_NUMBER(ret);
+          ARGS() = CDR(ARGS());
+          JUMP(CMD_PLUS + 1);
+          break;
+        }
+        ret = VAL();
+        RET();
         break;
     }
-  }while (stack);
+  }
   return ret;
 }
 

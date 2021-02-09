@@ -20,9 +20,15 @@ struct cons_s *CONS(void* car, void *cdr) {
   return ret;
 }
 
-struct number_s *number(char *data) {
+struct number_s *parse_number(char *data) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
   ret->number = strtol(data, NULL, 10);
+  return ret;
+}
+
+struct number_s *number(int nr) {
+  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
+  ret->number = nr;
   return ret;
 }
 
@@ -95,7 +101,7 @@ struct memcell_s *parser(int in_fd)
         }
         break;
       case T_NUMBER:
-        *pos = (void*)CONS((void*)number(token_value), NULL);
+        *pos = (void*)CONS((void*)parse_number(token_value), NULL);
         pos = (void*)&(*pos)->cdr;
         break;
       case T_STRING:
