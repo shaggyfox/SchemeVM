@@ -5,6 +5,13 @@
 #define ALIGN_TO(len, type) \
     (len % sizeof(type) ? len + sizeof(type) - len % sizeof(type) : len)
 
+struct cons_s *CONS_3p(void* car, void *cdr, struct memcell_pool_s *pool) {
+  struct cons_s *ret = memcell_alloc(TYPE_CONS, sizeof(*ret), pool);
+  ret->car = car;
+  ret->cdr = cdr;
+  return ret;
+}
+
 struct memcell_pool_s *memcell_init(uint32_t size)
 {
   struct memcell_pool_s *ret = malloc(sizeof(*ret));
@@ -22,22 +29,41 @@ void memcell_cleanup(struct memcell_pool_s *pool)
   free(pool);
 }
 
+void memcell_garbage_collect(struct memcell_pool_s *pool, void *param_a, void *param_b)
+{
+  struct memcell_s *cell = pool->pool;
+  while (cell->in_use != 255) {
+    cell->in_use = 0;
+    cell = &cell[cell->next];
+  }
+  memcell_unfree_r(param_a);
+  memcell_unfree_r(param_b);
+  if (pool->reclaim_memory) {
+    (*pool->reclaim_memory)();
+  }
+}
+#include <assert.h>
 void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
 {
+  printf("alloc(%d %d)\n", type, len);
   uint8_t next = ALIGN_TO(len, sizeof(struct memcell_s)) / sizeof(struct memcell_s);
   struct memcell_s *ret = NULL;
 
   for (int cnt = 0; cnt < 2; ++cnt) {
-    if (pool->last->in_use == 255) {
-      /* rewind */
-      pool->last = pool->pool;
-      continue;
+    while (!ret) {
+      if (pool->last->in_use == 255) {
+        /* rewind */
+        pool->last = pool->pool;
+        printf("rewind\n");
+        break;
+      }
+      if (!pool->last->in_use && pool->last->next >= next) {
+        ret = pool->last;
+        printf("found\n");
+        break;
+      }
+      pool->last += pool->last->next;
     }
-    if (!pool->last->in_use && pool->last->next >= next) {
-      ret = pool->last;
-      break;
-    }
-    pool->last += pool->last->next;
   }
 
   if (ret) {
@@ -50,6 +76,11 @@ void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
     ret->type = type;
     ret->next = next;
     ret->in_use = 1;
+  }
+  assert(ret);
+  if (!ret) {
+    printf("out of memory");
+    exit(1);
   }
   return ret;
 }
@@ -65,3 +96,19 @@ void memcell_unfree(void *in)
   struct memcell_s *cell = in;
   cell->in_use = 1;
 }
+
+void memcell_unfree_r(void *in)
+{
+  if (!in) {
+    /* */
+  } else {
+    struct memcell_s *cell = in;
+    if (cell->type == TYPE_CONS) {
+      struct cons_s *cons = (void*)cell;
+      memcell_unfree_r(cons->car);
+      memcell_unfree_r(cons->cdr);
+    }
+    memcell_unfree(in);
+  }
+}
+

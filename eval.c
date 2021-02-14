@@ -40,6 +40,13 @@ void *DEFINE(void *sym, void *value)
 #define RET() vm_state = (void*)CDR(vm_state);
 
 struct cons_s *vm_state = NULL;
+
+void my_reclaim_memory(void)
+{
+  memcell_unfree_r(vm_state);
+  memcell_unfree_r(environment);
+}
+
 struct memcell_s *eval(struct memcell_s *input){
   void *ret = NULL;
   int i = 0;
@@ -59,7 +66,7 @@ struct memcell_s *eval(struct memcell_s *input){
       case CMD_PLUS:
         VAL() = number(0);
       case CMD_PLUS + 1:
-        if (ARGS()) {
+        if (ARGS() && ARGS()->type == TYPE_CONS) {
           if (CAR(ARGS()) && CAR(ARGS())->type != TYPE_NUMBER) {
           CALL(CMD_PLUS + 2, CMD_RESOLV, CAR(ARGS()));
           break;

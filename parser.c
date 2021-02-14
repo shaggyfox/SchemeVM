@@ -13,13 +13,6 @@ struct stack_s {
   struct memcell_s *v;
 } *stack = NULL;
 
-struct cons_s *CONS(void* car, void *cdr) {
-  struct cons_s *ret = memcell_alloc(TYPE_CONS, sizeof(*ret), dynamic_pool);
-  ret->car = car;
-  ret->cdr = cdr;
-  return ret;
-}
-
 struct number_s *parse_number(char *data) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
   ret->number = strtol(data, NULL, 10);
