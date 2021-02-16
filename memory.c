@@ -6,7 +6,7 @@
     (len % sizeof(type) ? len + sizeof(type) - len % sizeof(type) : len)
 
 struct cons_s *CONS_3p(void* car, void *cdr, struct memcell_pool_s *pool) {
-  struct cons_s *ret = memcell_alloc(TYPE_CONS, sizeof(*ret), pool);
+  struct cons_s *ret = memcell_alloc_p2(TYPE_CONS, sizeof(*ret), pool, car, cdr);
   ret->car = car;
   ret->cdr = cdr;
   return ret;
@@ -14,8 +14,8 @@ struct cons_s *CONS_3p(void* car, void *cdr, struct memcell_pool_s *pool) {
 
 struct memcell_pool_s *memcell_init(uint32_t size)
 {
-  struct memcell_pool_s *ret = malloc(sizeof(*ret));
-  size = ALIGN_TO(size, sizeof(struct memcell_s));
+  struct memcell_pool_s *ret = calloc(1, sizeof(*ret));
+  size = ALIGN_TO(size, struct memcell_s);
   ret->pool=calloc(1, size);
   ret->pool[0].next = size / sizeof(struct memcell_s) - 1;
   ret->pool[ret->pool[0].next].in_use = 255; /* end of memory */
@@ -31,6 +31,10 @@ void memcell_cleanup(struct memcell_pool_s *pool)
 
 void memcell_garbage_collect(struct memcell_pool_s *pool, void *param_a, void *param_b)
 {
+  if (!pool->reclaim_memory) {
+    /* no reclaim no gc ;) */
+    return;
+  }
   struct memcell_s *cell = pool->pool;
   while (cell->in_use != 255) {
     cell->in_use = 0;
@@ -38,15 +42,13 @@ void memcell_garbage_collect(struct memcell_pool_s *pool, void *param_a, void *p
   }
   memcell_unfree_r(param_a);
   memcell_unfree_r(param_b);
-  if (pool->reclaim_memory) {
-    (*pool->reclaim_memory)();
-  }
+  (*pool->reclaim_memory)();
 }
+
 #include <assert.h>
-void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
+void *memcell_alloc_p2(int type, uint32_t len, struct memcell_pool_s *pool, void *a, void *b)
 {
-  printf("alloc(%d %d)\n", type, len);
-  uint8_t next = ALIGN_TO(len, sizeof(struct memcell_s)) / sizeof(struct memcell_s);
+  uint8_t next = ALIGN_TO(len, struct memcell_s) / sizeof(struct memcell_s);
   struct memcell_s *ret = NULL;
 
   for (int cnt = 0; cnt < 2; ++cnt) {
@@ -55,11 +57,11 @@ void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
         /* rewind */
         pool->last = pool->pool;
         printf("rewind\n");
+        memcell_garbage_collect(pool, a, b);
         break;
       }
       if (!pool->last->in_use && pool->last->next >= next) {
         ret = pool->last;
-        printf("found\n");
         break;
       }
       pool->last += pool->last->next;
@@ -83,6 +85,10 @@ void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
     exit(1);
   }
   return ret;
+}
+void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool)
+{
+  return memcell_alloc_p2(type, len, pool, NULL, NULL);
 }
 
 void memcell_free(void *in)
@@ -110,5 +116,10 @@ void memcell_unfree_r(void *in)
     }
     memcell_unfree(in);
   }
+}
+
+void memcell_set_gc(struct memcell_pool_s *pool, void (*gc)(void))
+{
+  pool->reclaim_memory = gc;
 }
 

@@ -90,6 +90,7 @@ struct memcell_s *eval(struct memcell_s *input){
 int main()
 {
   init_globals();
+  memcell_set_gc(dynamic_pool, &my_reclaim_memory);
   struct memcell_s *line = parser(0);
   memcell_print(eval(line));
   cleanup_symbols();

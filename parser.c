@@ -13,12 +13,14 @@ struct stack_s {
   struct memcell_s *v;
 } *stack = NULL;
 
-struct number_s *parse_number(char *data) {
-  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
+/* XXX static pool */
+static struct number_s *parse_number(char *data) {
+  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), static_pool);
   ret->number = strtol(data, NULL, 10);
   return ret;
 }
 
+/* XXX dynamic pool */
 struct number_s *number(int nr) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
   ret->number = nr;
@@ -40,7 +42,8 @@ void cleanup_symbols(void) {
   }
 }
 
-struct symbol_s *symbol(char *data) {
+/* XXX static pool */
+static struct symbol_s *symbol(char *data) {
   struct symbol_s *ret = NULL;
   struct symbol_s *new_sym = memcell_alloc(TYPE_SYMBOL, sizeof(*new_sym) + strlen(data) + 1, static_pool);
   memcpy(new_sym->symbol, data, strlen(data) + 1);
@@ -79,7 +82,7 @@ struct memcell_s *parser(int in_fd)
       case T_SPECIAL:
         switch (*token_value) {
           case '(':
-            *pos = CONS(NULL, NULL);
+            *pos = CONS_3p(NULL, NULL, static_pool);
             push((void*)&(*pos)->cdr);
             pos = (void*)&(*pos)->car;
             *pos = NULL;
@@ -94,13 +97,13 @@ struct memcell_s *parser(int in_fd)
         }
         break;
       case T_NUMBER:
-        *pos = (void*)CONS((void*)parse_number(token_value), NULL);
+        *pos = (void*)CONS_3p((void*)parse_number(token_value), NULL, static_pool);
         pos = (void*)&(*pos)->cdr;
         break;
       case T_STRING:
         break;
       case T_SYMBOL:
-        *pos = (void*)CONS((void*)symbol(token_value), NULL);
+        *pos = (void*)CONS_3p((void*)symbol(token_value), NULL, static_pool);
         pos = (void*)&(*pos)->cdr;
         break;
     }

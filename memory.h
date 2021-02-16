@@ -37,8 +37,10 @@ struct cons_s *CONS_3p(void* car, void *cdr, struct memcell_pool_s *pool);
 
 struct memcell_pool_s *memcell_init(uint32_t size);
 void memcell_cleanup(struct memcell_pool_s* pool);
+void *memcell_alloc_p2(int type, uint32_t len, struct memcell_pool_s *pool, void *a, void *b);
 void *memcell_alloc(int type, uint32_t len, struct memcell_pool_s *pool);
 void memcell_free(void *in);
 void memcell_unfree(void *in);
 void memcell_unfree_r(void *in);
+void memcell_set_gc(struct memcell_pool_s *pool, void (*gc)(void));
 #endif
