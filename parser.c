@@ -7,12 +7,6 @@
 #include <search.h>
 #include "globals.h"
 
-
-struct stack_s {
-  struct stack_s *next;
-  struct memcell_s *v;
-} *stack = NULL;
-
 /* XXX static pool */
 static struct number_s *parse_number(char *data) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), static_pool);
@@ -54,20 +48,15 @@ static struct symbol_s *symbol(char *data) {
   return ret;
 }
 
+struct cons_s *parser_stack = NULL;
+
 void push(struct memcell_s *v) {
-  struct stack_s *n = malloc(sizeof(*n));
-  n->v = v;
-  n->next = stack;
-  stack = n;
+  parser_stack = CONS(v, parser_stack);
 }
 
 struct memcell_s *pop(void) {
-  struct memcell_s *ret = stack ? stack->v : NULL;
-  if (stack) {
-    void *fp = stack;
-    stack = stack->next;
-    free(fp);
-  }
+  struct memcell_s *ret = CAR(parser_stack);
+  parser_stack = (void*)CDR(parser_stack);
   return ret;
 }
 
@@ -107,7 +96,7 @@ struct memcell_s *parser(int in_fd)
         pos = (void*)&(*pos)->cdr;
         break;
     }
-  } while (stack);
+  } while (parser_stack);
   if (ret) {
     memcell_free(ret);
     return ret->car;
