@@ -61,11 +61,15 @@ void my_reclaim_memory(void)
 
 struct memcell_s *eval(struct memcell_s *input){
   void *ret = NULL;
-  vm_state = NEW_STATE(CMD_PLUS, input, NULL, NULL);
+  vm_state = NEW_STATE(CMD_EVAL, input, NULL, NULL);
   while(vm_state) {
     switch (GET_NUMBER(CAR(CAR(vm_state)))) {
       case CMD_EVAL:
-        if (ARGS() && ARGS()->type == TYPE_SYMBOL) {
+        if (ARGS() && ARGS()->type == TYPE_CONS) {
+          ARGS() = (void*)CONS(CAR(ARGS()), CONS(CDR(ARGS()), NULL));
+          JUMP(CMD_APPLY);
+          break;
+        } else if (ARGS() && ARGS()->type == TYPE_SYMBOL) {
           ret = GET_ENV(ARGS());
         } else if (ARGS() && ARGS()->type == TYPE_NUMBER) {
           ret = ARGS();
@@ -74,7 +78,17 @@ struct memcell_s *eval(struct memcell_s *input){
         }
         RET();
         break;
-      case CMD_EVAL + 1:
+      case CMD_APPLY:
+        /* eval cmd */
+        CALL(CMD_APPLY + 1, CMD_EVAL, CAR(ARGS()));
+        break;
+        case CMD_APPLY + 1:
+        if (ret && MEMCELL_TYPE(ret) == TYPE_BUILDIN) {
+          ARGS() = CAR(CDR(ARGS()));
+          JUMP(((struct memcell_s*)ret)->cmd);
+          break;
+        }
+        RET();
         break;
       case CMD_PLUS:
         VAL() = number(0);
@@ -93,6 +107,9 @@ struct memcell_s *eval(struct memcell_s *input){
         ret = VAL();
         RET();
         break;
+      default:
+        printf("error state");
+        return NULL;
     }
   }
   return ret;
@@ -102,6 +119,7 @@ int main()
 {
   init_globals();
   SET_ENV(mk_symbol("A"), number(3));
+  SET_ENV(mk_symbol("+"), mk_buildin(CMD_PLUS));
   memcell_set_gc(dynamic_pool, &my_reclaim_memory);
   struct memcell_s *line = parser(0);
   memcell_print(eval(line));

@@ -40,6 +40,13 @@ struct symbol_s *mk_symbol(char *data) {
   return ret;
 }
 
+struct memcell_s *mk_buildin(int cmd)
+{
+  struct memcell_s *ret = memcell_alloc(TYPE_BUILDIN, sizeof(*ret), static_pool);
+  ret->cmd = cmd;
+  return ret;
+}
+
 void push(struct memcell_s *v) {
   parser_stack = CONS(v, parser_stack);
 }
