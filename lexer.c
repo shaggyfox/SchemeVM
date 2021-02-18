@@ -105,26 +105,3 @@ int read_token(int fd, char *buff, int len)
     esc = 0;
   }
 }
-
-#if 0
-int main() {
-  int c;
-  char buff[1024];
-  while (T_ERROR != (c = read_token(0, buff, sizeof(buff)))) {
-    switch (c) {
-      case T_STRING:
-        printf("string:%s\n", buff);
-        break;
-      case T_NUMBER:
-        printf("number:%s\n", buff);
-        break;
-      case T_SYMBOL:
-        printf("symbol:%s\n", buff);
-        break;
-      case T_SPECIAL:
-        printf("special:%s\n", buff);
-        break;
-    }
-  }
-}
-#endif

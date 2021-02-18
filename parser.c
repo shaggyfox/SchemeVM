@@ -7,48 +7,37 @@
 #include <search.h>
 #include "globals.h"
 
-/* XXX static pool */
+/* XXX GLOBALS */
+struct cons_s *symbol_list = NULL;
+struct cons_s *parser_stack = NULL;
+
 static struct number_s *parse_number(char *data) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), static_pool);
   ret->number = strtol(data, NULL, 10);
   return ret;
 }
 
-/* XXX dynamic pool */
 struct number_s *number(int nr) {
   struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
   ret->number = nr;
   return ret;
 }
 
-void *symbol_tree = NULL;
-static int sym_cmp(const void *a, const void *b) {
-  const struct symbol_s *sym_a = a;
-  const struct symbol_s *sym_b = b;
-  return strcmp(sym_a->symbol, sym_b->symbol);
-}
-
-void cleanup_symbols(void) {
-  while (symbol_tree) {
-    void *to_del = *(void**)symbol_tree;
-    tdelete(to_del, &symbol_tree, sym_cmp);
-    memcell_free(to_del);
-  }
-}
-
-/* XXX static pool */
 static struct symbol_s *symbol(char *data) {
   struct symbol_s *ret = NULL;
-  struct symbol_s *new_sym = memcell_alloc(TYPE_SYMBOL, sizeof(*new_sym) + strlen(data) + 1, static_pool);
-  memcpy(new_sym->symbol, data, strlen(data) + 1);
-  ret = *(void**)tsearch(new_sym, &symbol_tree, sym_cmp);
-  if (ret != new_sym) {
-    memcell_free(new_sym);
+  for (struct cons_s *c = symbol_list; c; c = (void*)CDR(c)) {
+    struct symbol_s *e = (void*)CAR(c);
+    if (!strcmp(e->symbol, data)) {
+      ret = e;
+      break;
+    }
+  }
+  if (!ret) {
+    ret = memcell_alloc(TYPE_SYMBOL, sizeof(*ret) + strlen(data) + 1, static_pool);
+    strncpy(ret->symbol, data, strlen(data) + 1);
   }
   return ret;
 }
-
-struct cons_s *parser_stack = NULL;
 
 void push(struct memcell_s *v) {
   parser_stack = CONS(v, parser_stack);
@@ -138,12 +127,3 @@ void memcell_print(struct memcell_s *cell) {
      break;
   }
 }
-
-/*
-int main()
-{
-  memcell_init(1024);
-  print_cons(parser(0));
-  memcell_cleanup();
-}
-*/

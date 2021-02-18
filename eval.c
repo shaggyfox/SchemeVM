@@ -49,7 +49,6 @@ void my_reclaim_memory(void)
 
 struct memcell_s *eval(struct memcell_s *input){
   void *ret = NULL;
-  int i = 0;
   vm_state = NEW_STATE(CMD_PLUS, input, NULL, NULL);
   while(vm_state) {
     switch (GET_NUMBER(CAR(CAR(vm_state)))) {
@@ -93,6 +92,5 @@ int main()
   memcell_set_gc(dynamic_pool, &my_reclaim_memory);
   struct memcell_s *line = parser(0);
   memcell_print(eval(line));
-  cleanup_symbols();
   cleanup_globals();
 }
