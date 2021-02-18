@@ -23,7 +23,7 @@ struct number_s *number(int nr) {
   return ret;
 }
 
-static struct symbol_s *symbol(char *data) {
+struct symbol_s *mk_symbol(char *data) {
   struct symbol_s *ret = NULL;
   for (struct cons_s *c = symbol_list; c; c = (void*)CDR(c)) {
     struct symbol_s *e = (void*)CAR(c);
@@ -35,6 +35,7 @@ static struct symbol_s *symbol(char *data) {
   if (!ret) {
     ret = memcell_alloc(TYPE_SYMBOL, sizeof(*ret) + strlen(data) + 1, static_pool);
     strncpy(ret->symbol, data, strlen(data) + 1);
+    symbol_list = CONS(ret, symbol_list);
   }
   return ret;
 }
@@ -81,7 +82,7 @@ struct memcell_s *parser(int in_fd)
       case T_STRING:
         break;
       case T_SYMBOL:
-        *pos = (void*)CONS_3p((void*)symbol(token_value), NULL, static_pool);
+        *pos = (void*)CONS_3p((void*)mk_symbol(token_value), NULL, static_pool);
         pos = (void*)&(*pos)->cdr;
         break;
     }

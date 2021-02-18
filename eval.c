@@ -6,16 +6,28 @@
 
 struct cons_s *environment = NULL;
 
-void *DEFINE(void *sym, void *value)
+void *SET_ENV(struct symbol_s *sym, void *value)
 {
   if (MEMCELL_TYPE(sym) != TYPE_SYMBOL) {
     printf("error: define first parameter must be symbol\n");
     return NULL;
   }
-  environment = CONS(sym, value);
+  environment = CONS(CONS(sym, value), environment);
   return value;
 }
-#define CMD_RESOLV 10
+
+void *GET_ENV(void *sym)
+{
+  void *ret = NULL;
+  for(struct cons_s *e = environment; e; e = (void*)CDR(e)) {
+    if (sym == (void*)CAR(CAR(e))) {
+      ret = CDR(CAR(e));
+      break;
+    }
+  }
+  return ret;
+}
+#define CMD_EVAL 10
 #define CMD_APPLY 20
 #define CMD_PLUS  30
 #define CMD_MINUS 40
@@ -52,28 +64,28 @@ struct memcell_s *eval(struct memcell_s *input){
   vm_state = NEW_STATE(CMD_PLUS, input, NULL, NULL);
   while(vm_state) {
     switch (GET_NUMBER(CAR(CAR(vm_state)))) {
-      case CMD_RESOLV:
-        if (ARGS() && ARGS()->type == TYPE_NUMBER) {
+      case CMD_EVAL:
+        if (ARGS() && ARGS()->type == TYPE_SYMBOL) {
+          ret = GET_ENV(ARGS());
+        } else if (ARGS() && ARGS()->type == TYPE_NUMBER) {
           ret = ARGS();
         } else {
-          ret = number(0);
+          ret = NULL;
         }
         RET();
         break;
-      case CMD_RESOLV + 1:
+      case CMD_EVAL + 1:
         break;
       case CMD_PLUS:
         VAL() = number(0);
       case CMD_PLUS + 1:
         if (ARGS() && ARGS()->type == TYPE_CONS) {
-          if (CAR(ARGS()) && CAR(ARGS())->type != TYPE_NUMBER) {
-          CALL(CMD_PLUS + 2, CMD_RESOLV, CAR(ARGS()));
+          CALL(CMD_PLUS + 2, CMD_EVAL, CAR(ARGS()));
           break;
-          }else {
-            ret = CAR(ARGS());
-          }
           case CMD_PLUS + 2:
-          GET_NUMBER(VAL()) += GET_NUMBER(ret);
+          if (ret && MEMCELL_TYPE(ret) == TYPE_NUMBER) {
+            GET_NUMBER(VAL()) += GET_NUMBER(ret);
+          }
           ARGS() = CDR(ARGS());
           JUMP(CMD_PLUS + 1);
           break;
@@ -89,6 +101,7 @@ struct memcell_s *eval(struct memcell_s *input){
 int main()
 {
   init_globals();
+  SET_ENV(mk_symbol("A"), number(3));
   memcell_set_gc(dynamic_pool, &my_reclaim_memory);
   struct memcell_s *line = parser(0);
   memcell_print(eval(line));
