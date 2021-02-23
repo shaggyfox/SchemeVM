@@ -36,7 +36,8 @@ void *GET_ENV(void *sym)
   CONS(CONS(number(fn), CONS(args, CONS(value, NULL))), next)
 
 #define JUMP(fn) \
-  GET_NUMBER(CAR(CAR(vm_state))) = fn;
+  GET_NUMBER(CAR(CAR(vm_state))) = fn; \
+  break;
 
 #define ARGS() \
   CAR(CDR(CAR(vm_state)))
@@ -46,10 +47,11 @@ void *GET_ENV(void *sym)
 
 #define CALL(return_fn, call_fn, args) \
   GET_NUMBER(CAR(CAR(vm_state))) = return_fn; \
-  vm_state = NEW_STATE(call_fn, args, NULL, vm_state);
+  vm_state = NEW_STATE(call_fn, args, NULL, vm_state); \
+  break;
 
 #define GET_NUMBER(v) ((struct number_s*)v)->number
-#define RET() vm_state = (void*)CDR(vm_state);
+#define RET() vm_state = (void*)CDR(vm_state);break;
 
 struct cons_s *vm_state = NULL;
 
@@ -71,7 +73,6 @@ struct memcell_s *eval(struct memcell_s *input){
         if (ARGS() && ARGS()->type == TYPE_CONS) {
           ARGS() = (void*)CONS(CAR(ARGS()), CONS(CDR(ARGS()), NULL));
           JUMP(CMD_APPLY);
-          break;
         } else if (ARGS() && ARGS()->type == TYPE_SYMBOL) {
           ret = GET_ENV(ARGS());
         } else if (ARGS() && ARGS()->type == TYPE_NUMBER) {
@@ -80,36 +81,29 @@ struct memcell_s *eval(struct memcell_s *input){
           ret = NULL;
         }
         RET();
-        break;
       case CMD_APPLY:
         /* eval cmd */
         CALL(CMD_APPLY + 1, CMD_EVAL, CAR(ARGS()));
-        break;
-        case CMD_APPLY + 1:
+      case CMD_APPLY + 1:
         if (ret && MEMCELL_TYPE(ret) == TYPE_BUILDIN) {
           ARGS() = CAR(CDR(ARGS()));
           JUMP(((struct memcell_s*)ret)->cmd);
-          break;
         }
         RET();
-        break;
       case CMD_PLUS:
         VAL() = number(0);
       case CMD_PLUS + 1:
         if (ARGS() && ARGS()->type == TYPE_CONS) {
           CALL(CMD_PLUS + 2, CMD_EVAL, CAR(ARGS()));
-          break;
           case CMD_PLUS + 2:
           if (ret && MEMCELL_TYPE(ret) == TYPE_NUMBER) {
             GET_NUMBER(VAL()) += GET_NUMBER(ret);
           }
           ARGS() = CDR(ARGS());
           JUMP(CMD_PLUS + 1);
-          break;
         }
         ret = VAL();
         RET();
-        break;
       default:
         printf("error state");
         return NULL;
