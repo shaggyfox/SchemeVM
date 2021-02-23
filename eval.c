@@ -57,6 +57,9 @@ void my_reclaim_memory(void)
 {
   memcell_unfree_r(vm_state);
   memcell_unfree_r(environment);
+  memcell_unfree_r(symbol_list);
+  memcell_unfree_r(parser_stack);
+  memcell_unfree_r(source);
 }
 
 struct memcell_s *eval(struct memcell_s *input){
@@ -120,7 +123,7 @@ int main()
   init_globals();
   SET_ENV(mk_symbol("A"), number(3));
   SET_ENV(mk_symbol("+"), mk_buildin(CMD_PLUS));
-  memcell_set_gc(dynamic_pool, &my_reclaim_memory);
+  memcell_set_gc(memory_pool, &my_reclaim_memory);
   struct memcell_s *line = parser(0);
   memcell_print(eval(line));
   cleanup_globals();

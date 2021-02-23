@@ -10,15 +10,17 @@
 /* XXX GLOBALS */
 struct cons_s *symbol_list = NULL;
 struct cons_s *parser_stack = NULL;
+struct cons_s *source = NULL;
+
 
 static struct number_s *parse_number(char *data) {
-  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), static_pool);
+  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), memory_pool);
   ret->number = strtol(data, NULL, 10);
   return ret;
 }
 
 struct number_s *number(int nr) {
-  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), dynamic_pool);
+  struct number_s *ret = memcell_alloc(TYPE_NUMBER, sizeof(*ret), memory_pool);
   ret->number = nr;
   return ret;
 }
@@ -33,7 +35,7 @@ struct symbol_s *mk_symbol(char *data) {
     }
   }
   if (!ret) {
-    ret = memcell_alloc(TYPE_SYMBOL, sizeof(*ret) + strlen(data) + 1, static_pool);
+    ret = memcell_alloc(TYPE_SYMBOL, sizeof(*ret) + strlen(data) + 1, memory_pool);
     strncpy(ret->symbol, data, strlen(data) + 1);
     symbol_list = CONS(ret, symbol_list);
   }
@@ -42,7 +44,7 @@ struct symbol_s *mk_symbol(char *data) {
 
 struct memcell_s *mk_buildin(int cmd)
 {
-  struct memcell_s *ret = memcell_alloc(TYPE_BUILDIN, sizeof(*ret), static_pool);
+  struct memcell_s *ret = memcell_alloc(TYPE_BUILDIN, sizeof(*ret), memory_pool);
   ret->cmd = cmd;
   return ret;
 }
@@ -59,8 +61,8 @@ struct memcell_s *pop(void) {
 
 struct memcell_s *parser(int in_fd)
 {
-  struct cons_s *ret = NULL;
-  struct cons_s **pos = &ret;
+  source = NULL;
+  struct cons_s **pos = &source;
   char token_value[1024];
   do {
     int token = read_token(in_fd, token_value, sizeof(token_value));
@@ -68,7 +70,7 @@ struct memcell_s *parser(int in_fd)
       case T_SPECIAL:
         switch (*token_value) {
           case '(':
-            *pos = CONS_3p(NULL, NULL, static_pool);
+            *pos = CONS(NULL, NULL);
             push((void*)&(*pos)->cdr);
             pos = (void*)&(*pos)->car;
             *pos = NULL;
@@ -83,20 +85,22 @@ struct memcell_s *parser(int in_fd)
         }
         break;
       case T_NUMBER:
-        *pos = (void*)CONS_3p((void*)parse_number(token_value), NULL, static_pool);
+        *pos = (void*)CONS((void*)parse_number(token_value), NULL);
         pos = (void*)&(*pos)->cdr;
         break;
       case T_STRING:
         break;
       case T_SYMBOL:
-        *pos = (void*)CONS_3p((void*)mk_symbol(token_value), NULL, static_pool);
+        *pos = (void*)CONS((void*)mk_symbol(token_value), NULL);
         pos = (void*)&(*pos)->cdr;
         break;
     }
   } while (parser_stack);
-  if (ret) {
-    memcell_free(ret);
-    return ret->car;
+  /* XXX */
+  if (source) {
+    memcell_free(source);
+    source = (void*)CAR(source);
+    return (void*)source;
   }
   return NULL;
 }
