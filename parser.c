@@ -61,22 +61,35 @@ struct memcell_s *pop(void) {
 
 struct memcell_s *parser(int in_fd)
 {
+#define add_list_element()              \
+  if (pos && !first_in_list) {          \
+    pos->cdr = (void*)CONS(NULL, NULL); \
+    pos = (void*)pos->cdr;              \
+  } else if (!pos){                     \
+    source = pos = CONS(NULL, NULL);    \
+  }
   source = NULL;
-  struct cons_s **pos = &source;
+  struct cons_s *pos = NULL;
   char token_value[1024];
+  int first_in_list = 0;
   do {
     int token = read_token(in_fd, token_value, sizeof(token_value));
     switch (token) {
       case T_SPECIAL:
         switch (*token_value) {
           case '(':
-            *pos = CONS(NULL, NULL);
-            push((void*)&(*pos)->cdr);
-            pos = (void*)&(*pos)->car;
-            *pos = NULL;
+            add_list_element();
+            push((void*)pos);
+            pos->car = (void*)CONS(NULL, NULL);
+            pos = (void*)pos->car;
+            first_in_list = 1;
             break;
           case ')':
             pos = (void*)pop();
+            if (first_in_list) {
+              pos->car = NULL;
+              first_in_list = 0;
+            }
             break;
           case '\'':
             break;
@@ -85,18 +98,19 @@ struct memcell_s *parser(int in_fd)
         }
         break;
       case T_NUMBER:
-        *pos = (void*)CONS((void*)parse_number(token_value), NULL);
-        pos = (void*)&(*pos)->cdr;
+        add_list_element();
+        pos->car = (void*)parse_number(token_value);
+        first_in_list = 0;
         break;
       case T_STRING:
         break;
       case T_SYMBOL:
-        *pos = (void*)CONS((void*)mk_symbol(token_value), NULL);
-        pos = (void*)&(*pos)->cdr;
+        add_list_element();
+        pos->car = (void*)mk_symbol(token_value);
+        first_in_list = 0;
         break;
     }
   } while (parser_stack);
-  /* XXX */
   if (source) {
     memcell_free(source);
     source = (void*)CAR(source);
