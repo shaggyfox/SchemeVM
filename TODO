@@ -1,0 +1,4 @@
+* make memory pool expandable
+* check wehere to resolve argument eval or apply
+* implement define
+* Read-Eval-Print

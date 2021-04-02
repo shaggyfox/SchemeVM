@@ -50,6 +50,7 @@ void *memcell_alloc_p2(int type, uint32_t len, struct memcell_pool_s *pool, void
 {
   uint8_t next = ALIGN_TO(len, struct memcell_s) / sizeof(struct memcell_s);
   struct memcell_s *ret = NULL;
+do_it_again:
 
   for (int cnt = 0; cnt < 2; ++cnt) {
     while (!ret) {
@@ -79,9 +80,10 @@ void *memcell_alloc_p2(int type, uint32_t len, struct memcell_pool_s *pool, void
     ret->next = next;
     ret->in_use = 1;
   }
-  assert(ret);
   if (!ret) {
     printf("out of memory");
+    //expand_memory(pool);
+    goto do_it_again;
     exit(1);
   }
   return ret;
