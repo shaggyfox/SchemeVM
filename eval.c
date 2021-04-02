@@ -45,7 +45,7 @@ void *GET_ENV(void *sym)
 #define VAL() \
   CAR(CDR(CDR(CAR(vm_state))))
 
-#define CALL(return_fn, call_fn, args) \
+#define CALL(call_fn, args, return_fn) \
   GET_NUMBER(CAR(CAR(vm_state))) = return_fn; \
   vm_state = NEW_STATE(call_fn, args, NULL, vm_state); \
   break;
@@ -83,7 +83,7 @@ struct memcell_s *eval(struct memcell_s *input){
         RET();
       case CMD_APPLY:
         /* eval cmd */
-        CALL(CMD_APPLY + 1, CMD_EVAL, CAR(ARGS()));
+        CALL(CMD_EVAL, CAR(ARGS()), CMD_APPLY + 1);
       case CMD_APPLY + 1:
         if (ret && MEMCELL_TYPE(ret) == TYPE_BUILDIN) {
           ARGS() = CAR(CDR(ARGS()));
@@ -91,10 +91,10 @@ struct memcell_s *eval(struct memcell_s *input){
         }
         RET();
       case CMD_PLUS:
-        VAL() = number(0);
+        VAL() = (void*)number(0);
       case CMD_PLUS + 1:
         if (ARGS() && ARGS()->type == TYPE_CONS) {
-          CALL(CMD_PLUS + 2, CMD_EVAL, CAR(ARGS()));
+          CALL(CMD_EVAL, CAR(ARGS()), CMD_PLUS + 2);
           case CMD_PLUS + 2:
           if (ret && MEMCELL_TYPE(ret) == TYPE_NUMBER) {
             GET_NUMBER(VAL()) += GET_NUMBER(ret);
