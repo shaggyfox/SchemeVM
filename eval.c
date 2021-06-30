@@ -31,6 +31,7 @@ void *GET_ENV(void *sym)
 #define CMD_APPLY 20
 #define CMD_PLUS  30
 #define CMD_MINUS 40
+#define CMD_QUOTE 50
 
 #define NEW_STATE(fn, args, value, next) \
   CONS(CONS(number(fn), CONS(args, CONS(value, NULL))), next)
@@ -69,6 +70,15 @@ struct memcell_s *eval(struct memcell_s *input){
   vm_state = NEW_STATE(CMD_EVAL, input, NULL, NULL);
   while(vm_state) {
     switch (GET_NUMBER(CAR(CAR(vm_state)))) {
+      case CMD_QUOTE:
+        printf("quotecmd\n");
+        if (ARGS()) {
+          ret = CAR(ARGS());
+        } else {
+          /* error */
+          ret = NULL;
+        }
+        RET()
       case CMD_EVAL:
         if (ARGS() && ARGS()->type == TYPE_CONS) {
           ARGS() = (void*)CONS(CAR(ARGS()), CONS(CDR(ARGS()), NULL));
@@ -88,6 +98,10 @@ struct memcell_s *eval(struct memcell_s *input){
         if (ret && MEMCELL_TYPE(ret) == TYPE_BUILDIN) {
           ARGS() = CAR(CDR(ARGS()));
           JUMP(((struct memcell_s*)ret)->cmd);
+        } else {
+          /* error -.- */
+          printf("err\n");
+          ret = NULL;
         }
         RET();
       case CMD_PLUS:
@@ -117,6 +131,8 @@ int main()
   init_globals();
   SET_ENV(mk_symbol("A"), number(3));
   SET_ENV(mk_symbol("+"), mk_buildin(CMD_PLUS));
+  SET_ENV(mk_symbol("apply"), mk_buildin(CMD_APPLY));
+  SET_ENV(mk_symbol("quote"), mk_buildin(CMD_QUOTE));
   memcell_set_gc(memory_pool, &my_reclaim_memory);
   struct memcell_s *line = parser(0);
   memcell_print(eval(line));
